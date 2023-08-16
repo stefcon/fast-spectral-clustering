@@ -1,0 +1,30 @@
+# vscoode
+.vscode
+
+# data
+data/processed
+data/raw
+
+# reports
+**/*.pdf
+
+# model output
+output
+build
+
+# binary files
+bin
+program
+
+# todos
+todo.md
+
+# libraries directory
+lib
+
+# notebook checkpoints
+.ipynb_checkpoints
+
+# python
+*.pyc
+__pycache__
