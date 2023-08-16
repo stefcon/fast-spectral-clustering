@@ -20,7 +20,11 @@ program
 todo.md
 
 # libraries directory
-lib
+# lib
+lib/armadillo
+lib/Eigen
+lib/QCustomPlot
+lib/spectra-0.4.0
 
 # notebook checkpoints
 .ipynb_checkpoints
