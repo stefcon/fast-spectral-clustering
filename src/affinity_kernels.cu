@@ -91,7 +91,7 @@ __global__ void calculate_affinity_matrix_kernel(double* A_11, double* Z, double
         }
         mu += sdata[0];
     }
-    mu /= pow(mu, 2);
+    mu /= pow(m, 2);
     mu = 1 / mu;
 
     if (i < m && j < m && i <= j)

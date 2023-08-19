@@ -6,14 +6,11 @@
 #include <armadillo>
 #include <cublas_v2.h>
 #include <cusolverDn.h>
+#include "../lib/sample.hpp"
 
 class CSSC : public Clustering {
 public:
-    CSSC(arma::mat X, int k, int m) : X(X), k(k), m(m) 
-    {
-        inds = arma::linspace<arma::uvec>(0, X.n_rows - 1, X.n_rows);
-        inds = arma::shuffle(inds);
-    }
+    CSSC(arma::mat X, int k, int m) : X(X), k(k), m(m) {}
     ~CSSC() {};
 
     void fit() override;
@@ -25,7 +22,6 @@ private:
     int k, m;
     arma::mat X;
     arma::uvec y_hat;
-    arma::uvec inds;
 };
 
 #endif

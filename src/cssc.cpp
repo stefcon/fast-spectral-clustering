@@ -16,49 +16,66 @@ void CSSC::fit()
     timer.tic();
     int x_n = X.n_rows;
     // Sample m points from X (Armadillo)
-    // arma::uvec inds = arma::linspace<arma::uvec>(0, n-1, n);
-    // inds = arma::shuffle(inds);
+    arma::uvec inds = sample_without_replacement(0, X.n_rows - 1, m);
+    inds.load("mnist_inds.csv", arma::csv_ascii);
     inds = inds.rows(0, m-1);
 
     // Calculate Gaussian kernel
     arma::mat Z = X.rows(inds);
+    Z.save("Z.csv", arma::csv_ascii);
+    // Z.load("mnist_Z.csv", arma::csv_ascii);
     double mu = 0.0;
     for (unsigned int i = 0; i < m; i++) {
         for (unsigned int j = 0; j < m; j++) {
             mu += pow(arma::norm(Z.row(i) - Z.row(j)), 2);
         }
     }
-    mu /= pow(mu, 2);
+    mu /= pow(m, 2);
     mu = 1 / mu;
 
 
-    // // Calculate the affinity matrix
+    // Calculate the affinity matrix
     arma::mat A_11(m, m);
-    for (unsigned int i=0; i<m; i++) {
-        for (unsigned int j=i; j<m; j++) {
+    for (unsigned int i= 0; i < m; i++) {
+        for (unsigned int j=i; j < m; j++) {
             double val = exp(-mu * pow(arma::norm(Z.row(i) - Z.row(j)), 2));
             A_11(i, j) = val;
             A_11(j, i) = val;
         }
     }
+    A_11.save("A_11_cpu.csv", arma::csv_ascii);
 
     arma::vec ww = A_11 * arma::ones<arma::vec>(m);
     arma::mat D_star = arma::diagmat(ww); // Don't see why it's needed
     arma::mat D_star_ = arma::diagmat(arma::pow(arma::sqrt(ww), -1));
     arma::mat M_star = D_star_ * A_11 * D_star_;
+    M_star.save("M_star_cpu.csv", arma::csv_ascii);
 
     // Find the eigendecomposition of M_star
     arma::vec eigval;
     arma::mat eigvec;
+    // arma::cx_vec eigval_c;
+    // arma::cx_mat eigvec_c;
+    // whiten(M_star);
+    // arma::eig_gen(eigval_c, eigvec_c, M_star);
     arma::eig_sym(eigval, eigvec, M_star);
+    // Convert eigval and eigvec to double vetor and matrix
+    // eigval_c.save("eigval_c.csv", arma::csv_ascii);
+    // eigvec_c.save("eigvec_c.csv", arma::csv_ascii);
+    // arma::vec eigval = arma::real(eigval_c);
+    // arma::mat eigvec = arma::real(eigvec_c);
+    // eigval.save("eigval_cpu.csv", arma::csv_ascii);
+    // eigvec.save("eigvec_cpu.csv", arma::csv_ascii);
     
     eigval = eigval.rows(m-k, m-1);
     eigvec = eigvec.cols(m-k, m-1);
+
+    // printf("%d\n", eigval.n_rows);
+    // printf("%d, %d\n", eigvec.n_rows, eigvec.n_cols);
     
     arma::mat Lam = arma::diagmat(eigval);
     arma::mat B = D_star_ * eigvec * arma::diagmat(arma::pow(eigval, -1));
-    B.save("B.csv", arma::csv_ascii);
-    
+    B.save("B_cpu.csv", arma::csv_ascii);
     arma::mat Q(x_n, k);
     for (unsigned int i = 0; i < x_n; i++) {
         arma::rowvec a(m);
@@ -70,13 +87,12 @@ void CSSC::fit()
     }
     
     // Save Q
-    // Q.save("Q.csv", arma::csv_ascii);
+    Q.save("Q_cpu.csv", arma::csv_ascii);
     
     arma::vec dd = Q * Lam * Q.t() * arma::ones<arma::vec>(x_n);
     dd = arma::pow(arma::sqrt(dd), -1);
     arma::mat D_hat_ = arma::diagmat(dd);
     arma::mat U = D_hat_ * Q; // x_n x k
-    // U.save("U.csv", arma::csv_ascii);
 
     // Orthogonalize U
     arma::mat P = U.t() * U; // k x k
@@ -91,22 +107,22 @@ void CSSC::fit()
     arma::eig_sym(Lam_tilde, V_tilde, B);
     
     U = U * Vp * arma::diagmat(arma::pow(arma::sqrt(Sig), -1)) * V_tilde;
-    // U.save("U.csv", arma::csv_ascii);
+    U.save("U.csv", arma::csv_ascii);
+    // U.load("mnist_U2.csv", arma::csv_ascii);
 
     // Cluster the approximated eigenvectors, U
     arma::mat centroids;
     arma::uvec y_hat(x_n);  
-    bool status = arma::kmeans(centroids, U.t(), k, arma::random_subset, 30, false);
+    bool status = arma::kmeans(centroids, U.t(), k, arma::random_subset, 10, false);
     if (!status) {
         std::cout << "Clustering failed!" << std::endl;
         this->y_hat = y_hat;
     }
     centroids = centroids.t();
     arma::vec d(k);
-    double t = timer.toc();
     stopTime(&tim);
     printElapsedTime(tim, "CPU", CYAN);
-    std::cout << "Finished after " << t << "s" << std::endl;
+
     for (unsigned int i = 0; i < x_n; i++) {
         for (unsigned int j = 0; j < k; j++) {
             d.row(j) = arma::norm(U.row(i) - centroids.row(j));
@@ -125,6 +141,7 @@ void CSSC::gpu_fit(cublasHandle_t cublaH, cusolverDnHandle_t cusolveH)
     cusolverDnHandle_t cusolverH;
     cusolverDnCreate(&cusolverH);
 
+    
     // Cublas constants (used in cublas calsl)
     const double alpha = 1.0;
     const double beta = 0.0;
@@ -133,11 +150,18 @@ void CSSC::gpu_fit(cublasHandle_t cublaH, cusolverDnHandle_t cusolveH)
     startTime(&tim);
     // Sample m matrix rows from X
     int x_n = X.n_rows;
-    // arma::uvec inds = arma::linspace<arma::uvec>(0, x_n-1, x_n);
-    // inds = arma::shuffle(inds);
-    inds = inds.rows(0, m-1);
-    arma::mat Z = X.rows(inds);
+    arma::uvec inds = sample_without_replacement(0, X.n_rows - 1, m);
+    
 
+    // arma::vec indsf;
+    // indsf.load("mnist_inds.csv", arma::csv_ascii);
+    // arma::uvec inds = arma::conv_to<arma::uvec>::from(indsf);
+    // inds.save("pro_inds.csv", arma::csv_ascii);
+    // printf("inds: %d, %d\n", inds.n_rows, inds.n_cols);
+    // printf("X: %d, %d\n", X.n_rows, X.n_cols);
+    // inds = inds.rows(0, m-1);
+
+    arma::mat Z = X.rows(inds);
     // Calculate affinity matrix
     int n = Z.n_cols; // Now n is the number of columns of Z
     double* d_A_11;
@@ -146,6 +170,11 @@ void CSSC::gpu_fit(cublasHandle_t cublaH, cusolverDnHandle_t cusolveH)
     CUDA_CHECK(cudaMalloc((void**)&d_Z, m * n * sizeof(double)));
     CUDA_CHECK(cudaMemcpy(d_Z, Z.memptr(), m * n * sizeof(double), cudaMemcpyHostToDevice));
     calculate_affinity_matrix(d_A_11, d_Z, m, n);
+
+    // Check if A_11 is correct
+    arma::mat A_11(m, m);
+    CUDA_CHECK(cudaMemcpy(A_11.memptr(), d_A_11, m * m * sizeof(double), cudaMemcpyDeviceToHost));
+    // A_11.save("A_11.csv", arma::csv_ascii);
 
     // Calculate M_star TODO: Make this function
     double* d_M_star;
@@ -173,6 +202,11 @@ void CSSC::gpu_fit(cublasHandle_t cublaH, cusolverDnHandle_t cusolveH)
     CUDA_CHECK(cudaFree(d_ww));
     CUDA_CHECK(cudaFree(d_ones));
     CUDA_CHECK(cudaFree(d_DA));
+
+    // Check if M_star is correct
+    arma::mat M_star(m, m);
+    CUDA_CHECK(cudaMemcpy(M_star.memptr(), d_M_star, m * m * sizeof(double), cudaMemcpyDeviceToHost));
+    // M_star.save("M_star.csv", arma::csv_ascii);
 
     // Find the eigendecomp of M_star
     double* d_eigvals;
@@ -217,7 +251,7 @@ void CSSC::gpu_fit(cublasHandle_t cublaH, cusolverDnHandle_t cusolveH)
     arma::mat B(m, k);
     CUDA_CHECK(cudaMemcpy(B.memptr(), d_B, m * k * sizeof(double), cudaMemcpyDeviceToHost));
     // Save B to file
-    // B.save("B.txt", arma::raw_ascii);
+    // B.save("B.csv", arma::csv_ascii);
 
     CUDA_CHECK(cudaFree(d_Z));
     CUDA_CHECK(cudaFree(d_B));
@@ -293,16 +327,18 @@ void CSSC::gpu_fit(cublasHandle_t cublaH, cusolverDnHandle_t cusolveH)
     // Copy to arma::mat d_UU
     arma::mat UU(x_n, k);
     CUDA_CHECK(cudaMemcpy(UU.memptr(), d_UU, x_n * k * sizeof(double), cudaMemcpyDeviceToHost));
-    // UU.save("UU.txt", arma::raw_ascii);
-    // Cluster the approximated eigenvectors, U
+    // UU.save("UU.csv", arma::csv_ascii);
+    // UU.load("mnist_U2.csv", arma::csv_ascii);
+    // Cluster the approximated eigenvectors, Ud
     arma::mat centroids;
     arma::uvec y_hat(x_n);  
-    bool status = arma::kmeans(centroids, UU.t(), k, arma::random_subset, 30, false);
+    bool status = arma::kmeans(centroids, UU.t(), k, arma::random_subset, 10, false);
     if (!status) {
         std::cout << "Clustering failed!" << std::endl;
         this->y_hat = y_hat;
     }
     centroids = centroids.t();
+    centroids.save("centroids.csv", arma::csv_ascii);
     arma::vec d(k);
     for (unsigned int i = 0; i < x_n; i++) {
         for (unsigned int j = 0; j < k; j++) {
@@ -312,6 +348,7 @@ void CSSC::gpu_fit(cublasHandle_t cublaH, cusolverDnHandle_t cusolveH)
     }
 
     this->y_hat = y_hat;
+    // UU.save("UU_usps_best.csv", arma::csv_ascii);
 
     CUDA_CHECK(cudaFree(d_Lam));
     CUDA_CHECK(cudaFree(d_U));

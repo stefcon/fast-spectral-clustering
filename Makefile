@@ -35,7 +35,7 @@ OBJECTS = $(OBJECTS_CPP) $(OBJECTS_CU)
 DEPS = $(OBJECTS:.o=.d)
 
 # flags #
-COMPILE_FLAGS = -O3 -arch=sm_70 -lineinfo -Xcompiler -fopenmp
+COMPILE_FLAGS = -O3 -std=c++17 -arch=sm_70 -lineinfo -Xcompiler -fopenmp
 
 INCLUDES = -I/usr/include -I/usr/local/cuda/include -I$(HOME)/diplomski/lib -I $(HOME)/diplomski/lib/armadillo/include
 
