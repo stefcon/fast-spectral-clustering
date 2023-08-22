@@ -58,23 +58,23 @@ int main(int argc, char* argv[])
     cout << "Accuracy: " << accur << endl;
     cout << endl;
 
-    cssc_clustering.fit();
-    y_hat = cssc_clustering.get_y_hat();
+    // cssc_clustering.fit();
+    // y_hat = cssc_clustering.get_y_hat();
 
-    accur = cssc_clustering.accuracy(uY, y_hat);
-    cout << endl;
-    cout << "Accuracy: " << accur << endl;
-    cout << endl;
+    // accur = cssc_clustering.accuracy(uY, y_hat);
+    // cout << endl;
+    // cout << "Accuracy: " << accur << endl;
+    // cout << endl;
 
-    cout << "From file" << endl;
-    MemCSSC mem_cssc_clustering("small_X.csv", k, m);
-    mem_cssc_clustering.gpu_fit(cublasH, cusolverH);
-    y_hat = mem_cssc_clustering.get_y_hat();
+    // cout << "From file" << endl;
+    // MemCSSC mem_cssc_clustering("small_X.csv", k, m);
+    // mem_cssc_clustering.gpu_fit(cublasH, cusolverH);
+    // y_hat = mem_cssc_clustering.get_y_hat();
 
-    accur = mem_cssc_clustering.accuracy(uY, y_hat);
-    cout << endl;
-    cout << "Accuracy: " << accur<< endl;
-    cout << endl;
+    // accur = mem_cssc_clustering.accuracy(uY, y_hat);
+    // cout << endl;
+    // cout << "Accuracy: " << accur<< endl;
+    // cout << endl;
 
 
     cublasDestroy(cublasH);

@@ -184,7 +184,6 @@ void CSSC::gpu_fit(cublasHandle_t cublaH, cusolverDnHandle_t cusolveH)
     arma::mat Z(m, n);
     sample_matrix_X(Z, d_Z, n);
     calculate_affinity_matrix_A(d_A_11, d_Z, m, n);
-    // calculate_affinity_matrix_cuda(d_A_11, d_Z, m, n);
 
     // Calculate M_star TODO: Make this function
     double* d_M_star;
@@ -291,15 +290,23 @@ void CSSC::gpu_fit(cublasHandle_t cublaH, cusolverDnHandle_t cusolveH)
     CUDA_CHECK(cudaMalloc((void**)&d_D_hat, x_n * x_n * sizeof(double)));
     pow_vec(d_dd, x_n, -0.5);
     diagmat_cublas(cublasH, d_dd, d_D_hat, x_n);
-    CUDA_CHECK(cudaFree(d_dd));
+    // CUDA_CHECK(cudaFree(d_dd)); TODO: return after
 
     CUDA_CHECK(cudaMalloc((void**)&d_U, x_n * k * sizeof(double)));
 
     CUBLAS_CHECK(cublasDgemm(cublasH, CUBLAS_OP_N, CUBLAS_OP_N, x_n, k, x_n, &alpha, d_D_hat, x_n, d_Q, x_n, &beta, d_U, x_n));
     // Check if U is correct
-    // arma::mat U(x_n, k);
-    // CUDA_CHECK(cudaMemcpy(U.memptr(), d_U, x_n * k * sizeof(double), cudaMemcpyDeviceToHost));
-    // U.save("U.txt", arma::raw_ascii);
+    arma::mat U(x_n, k);
+    CUDA_CHECK(cudaMemcpy(U.memptr(), d_U, x_n * k * sizeof(double), cudaMemcpyDeviceToHost));
+    U.save("U.txt", arma::raw_ascii);
+
+    // Check another U way to calculate
+    gemv_diag(d_Q, d_dd, x_n, k, MUL_ROW_T);
+    // Check if U is correct
+    arma::mat U2(x_n, k);
+    CUDA_CHECK(cudaMemcpy(U2.memptr(), d_Q, x_n * k * sizeof(double), cudaMemcpyDeviceToHost));
+    U2.save("U2.txt", arma::raw_ascii);
+    CUDA_CHECK(cudaFree(d_dd));
     
     // Free unneded memory: d_Q, d_ones_xn(moved above), d_dd, d_D_hat, d_QLam, d_Qt_ones
     CUDA_CHECK(cudaFree(d_Q));

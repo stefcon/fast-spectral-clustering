@@ -10,6 +10,10 @@
 #include <cublas_v2.h>
 #include <cusolverDn.h>
 
+typedef enum {
+    MUL_ROW_T = 0,
+    MUL_COL_T = 1,
+} vectorDiagMul_t;
 
 extern void test_calculate_affinity_matrix(arma::mat& A_11, arma::mat& Z, double mu);
 
@@ -73,6 +77,13 @@ void calculate_q_memory(cudaStream_t* streams,
                         int n,
                         int k
                         );
+
+void gemv_diag(double* d_M,
+               double* d_v,
+               int m,
+               int n,
+               vectorDiagMul_t type
+               );
 
 
 #endif

@@ -5,6 +5,8 @@
 
 #define BLOCK_SIZE 16
 #define NUM_THREADS 256
+#define BLOCK_DIM_32 32
+#define NUM_THREADS_32 1024
 
 
 __global__ void initialize_with_ones(double* d_ones, int m)
@@ -31,6 +33,52 @@ __global__ void sqrt_kernel(double* d_ww, int m)
     if (i < m)
     {
         d_ww[i] = sqrt(d_ww[i]);
+    }
+}
+
+__global__ void gemv_diag_left(double* d_M, double* d_v, int m, int n)
+{
+    __shared__ double x_shared[BLOCK_DIM_32];
+
+    int tid = threadIdx.x;
+    int ty = tid / BLOCK_DIM_32;
+    int tx = tid % BLOCK_DIM_32;
+    // Rows that we are going to multiply
+    int i = blockIdx.y * BLOCK_DIM_32 + ty;
+    int j = blockIdx.x * BLOCK_DIM_32 + tx;
+
+    // int ind = i * BLOCK_DIM_32 + ty;
+    if (tx == 0 && i < m) x_shared[ty] = d_v[i];
+    else x_shared[ty] = 0.0;
+    __syncthreads();
+    double elem = x_shared[ty];
+
+    
+    if (i < m && j < n)
+    {
+        d_M[j * m + i] *= elem;
+    }
+}
+
+__global__ void gemv_diag_right(double* d_M, double* d_v, int m, int n)
+{
+    __shared__ double x_shared[BLOCK_DIM_32];
+
+    int tid = threadIdx.x;
+    int ty = tid / BLOCK_DIM_32;
+    int tx = tid % BLOCK_DIM_32;
+    // Rows that we are going to multiply
+    int i = blockIdx.y * BLOCK_DIM_32 + ty;
+    int j = blockIdx.x * BLOCK_DIM_32 + tx;
+
+    if (ty == 0 && j < n) x_shared[tx] = d_v[j];
+    else x_shared[tx] = 0.0;
+    __syncthreads();
+
+    
+    if (i < m && j < n)
+    {
+        d_M[j * m + i] *= x_shared[tx];
     }
 }
 
@@ -62,6 +110,20 @@ void gemv_cublas(cublasHandle_t handle, double* d_M, double* d_v, double* d_resu
     CUBLAS_CHECK(cublasDgemv(handle, CUBLAS_OP_N, m, n, &alpha, d_M, m, d_v, 1, &beta, d_result, 1));
 }
 
+void gemv_diag(double* d_M, double* d_v, int m, int n, vectorDiagMul_t type)
+{
+    int num_blocks = (m + NUM_THREADS - 1)/NUM_THREADS;
+    dim3 grid(num_blocks, num_blocks);
+    dim3 block(NUM_THREADS_32);
+    if (type == MUL_ROW_T)
+    {
+        gemv_diag_left<<<grid, block>>>(d_M, d_v, m, n);
+    }
+    else if (type == MUL_COL_T)
+    {
+        gemv_diag_right<<<grid, block>>>(d_M, d_v, m, n);
+    }
+}
 void test_calculate_m_star(cublasHandle_t& handle, arma::mat& A_11, arma::mat& M_star)
 {
     // Transfering this code to cuda:

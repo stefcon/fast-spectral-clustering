@@ -8,7 +8,7 @@
 
 __global__ void calculate_a_kernel(double* a, double* x, double* Z, int m, int n)
 {
-     __shared__ double x_shared[BLOCK_DIM_32];
+    __shared__ double x_shared[BLOCK_DIM_32];
     __shared__ double M_Z[BLOCK_DIM_32][BLOCK_DIM_32];
 
     int tid = threadIdx.x;
