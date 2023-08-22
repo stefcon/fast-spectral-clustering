@@ -11,8 +11,8 @@
 #include <cusolverDn.h>
 
 typedef enum {
-    MUL_ROW_T = 0,
-    MUL_COL_T = 1,
+    MUL_LEFT_T = 0,
+    MUL_RIGHT_T = 1,
 } vectorDiagMul_t;
 
 extern void test_calculate_affinity_matrix(arma::mat& A_11, arma::mat& Z, double mu);

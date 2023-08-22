@@ -43,7 +43,7 @@ int main(int argc, char* argv[])
     cout << uY.n_rows << ", " << uY.n_cols << endl;
     cout << arma::unique(uY).t() << endl;
 
-    unsigned int m = 1000;
+    unsigned int m = 500;
     unsigned int k = 5;
     double accur;
     arma::uvec y_hat;
@@ -80,47 +80,6 @@ int main(int argc, char* argv[])
     cublasDestroy(cublasH);
     cusolverDnDestroy(cusolverH);
 
-    // arma::mat Q1;
-    // arma::mat Q2;
-    // Q1.load("Q_cpu.csv", arma::csv_ascii);
-    // Q2.load("Q_mem.csv", arma::csv_ascii);
-    // // Compare two matrices, print if there is mismatch
-    // if (arma::approx_equal(Q1, Q2, "absdiff", 0.0001))
-    // {
-    //     cout << "Q matrices are equal" << endl;
-    // }
-    // else
-    // {
-    //     cout << "Q matrices are not equal" << endl;
-    // }
-
-    // arma::mat Z1;
-    // arma::mat Z2;
-    // Z1.load("Z.csv", arma::csv_ascii);
-    // Z2.load("Z_mem.csv", arma::csv_ascii);
-    // // Compare two matrices, print if there is mismatch
-    // if (arma::approx_equal(Z1, Z2, "absdiff", 0.00001))
-    // {
-    //     cout << "Z matrices are equal" << endl;
-    // }
-    // else
-    // {
-    //     cout << "Z matrices are not equal" << endl;
-    // }
-
-    // arma::mat U1;
-    // arma::mat U2;
-    // U1.load("UU1.csv", arma::csv_ascii);
-    // U2.load("UU2.csv", arma::csv_ascii);
-    // // Compare two matrices, print if there is mismatch
-    // if (arma::approx_equal(U1, U2, "absdiff", 0.00001))
-    // {
-    //     cout << "U matrices are equal" << endl;
-    // }
-    // else
-    // {
-    //     cout << "U matrices are not equal" << endl;
-    // }
 
     return 0;
 }

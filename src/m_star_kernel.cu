@@ -112,14 +112,22 @@ void gemv_cublas(cublasHandle_t handle, double* d_M, double* d_v, double* d_resu
 
 void gemv_diag(double* d_M, double* d_v, int m, int n, vectorDiagMul_t type)
 {
-    int num_blocks = (m + NUM_THREADS - 1)/NUM_THREADS;
-    dim3 grid(num_blocks, num_blocks);
+    // -----------------------------------------------------------------------------------------
+    // Multiplies matrix d_M and vector d_v as if d_v was a diagonal matrix
+    // Args:
+    //      d_M: matrix of size m x n
+    //      d_v: vector of size m/n (depending on type)
+    //      m: number of rows of d_M
+    //      n: number of columns of d_M
+    //      type: position of the vector in regards to the matrix d_M (MUL_ROW_T or MUL_COL_T)
+    // -----------------------------------------------------------------------------------------
+    dim3 grid((n + BLOCK_DIM_32 - 1)/BLOCK_DIM_32, (m + BLOCK_DIM_32 - 1)/BLOCK_DIM_32);
     dim3 block(NUM_THREADS_32);
-    if (type == MUL_ROW_T)
+    if (type == MUL_LEFT_T)
     {
         gemv_diag_left<<<grid, block>>>(d_M, d_v, m, n);
     }
-    else if (type == MUL_COL_T)
+    else if (type == MUL_RIGHT_T)
     {
         gemv_diag_right<<<grid, block>>>(d_M, d_v, m, n);
     }

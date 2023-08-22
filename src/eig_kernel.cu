@@ -19,91 +19,64 @@ void eig_dsymx_cusolver(
     //      d_A: matrix to calculate eigenvalues and eigenvectors of
     //      d_W: array to store eigenvalues in
     //      m: size of the matrix
-    //      k: number of eigenvalues to calculate; if k = -1, all eigenvalues are calculated
+    //      k: number of eigenvalues to calculate
     //      d_eigvals: array to store eigenvalues in
     //      d_eigvecs: array to store eigenvectors in
-    
+    if (k == -1) {
+        // Raise exception
+        printf("eig_dsymx_cusolver: k must be value > 0!\n");                          \
+        throw std::runtime_error("eig_dsymx_cusolver");
+    }
+
     void* d_work;
     int* devInfo;
     int h_meig = k; // number of eigenvalues found in the interval
     int workspaceInBytes;
 
     
-    if (h_meig != -1)
-    {
-        CUSOLVER_CHECK(cusolverDnDsyevdx_bufferSize(
-            cusolverH,
-            CUSOLVER_EIG_MODE_VECTOR, // compute eigenvectors
-            CUSOLVER_EIG_RANGE_I,     // compute eigenvalues in an interval
-            CUBLAS_FILL_MODE_LOWER,
-            m,
-            d_A,
-            m,
-            0.0, // vl - not used
-            0.0, // vu - not used
-            m-k+1,
-            m,
-            &h_meig,
-            d_W,
-            &workspaceInBytes
-        ));
-    }
-    else 
-    {
-        CUSOLVER_CHECK(cusolverDnDsyevd_bufferSize(
-            cusolverH,
-            CUSOLVER_EIG_MODE_VECTOR, // compute eigenvectors
-            CUBLAS_FILL_MODE_LOWER,
-            m,
-            d_A,
-            m,
-            d_W,
-            &workspaceInBytes
-        ));
-    }
+    CUSOLVER_CHECK(cusolverDnDsyevdx_bufferSize(
+        cusolverH,
+        CUSOLVER_EIG_MODE_VECTOR, // compute eigenvectors
+        CUSOLVER_EIG_RANGE_I,     // compute eigenvalues in an interval
+        CUBLAS_FILL_MODE_LOWER,
+        m,
+        d_A,
+        m,
+        0.0, // vl - not used
+        0.0, // vu - not used
+        m-k+1,
+        m,
+        &h_meig,
+        d_W,
+        &workspaceInBytes
+    ));
+    
     // Initialize the workspace
     CUDA_CHECK(cudaMalloc(&d_work, workspaceInBytes * sizeof(double)));
     CUDA_CHECK(cudaMalloc(&devInfo, sizeof(int)));
 
-    if (h_meig != -1)
-    {
-        CUSOLVER_CHECK(cusolverDnDsyevdx(
-            cusolverH,
-            CUSOLVER_EIG_MODE_VECTOR, // compute eigenvectors.
-            CUSOLVER_EIG_RANGE_I,     // compute eigenvalues in an interval
-            CUBLAS_FILL_MODE_LOWER,
-            m,      // size of the matrix
-            d_A,    // matrix
-            m,      // leading dimension of A
-            0.0,    // vl - not used
-            0.0,    // vu - not used
-            m-k+1,    // il - lower bound of interval (index)
-            m,      // iu - upper bound of interval (index)
-            &h_meig,// number of eigenvalues found in the interval
-            d_W,    // eigenvalues
-            (double*)d_work,    // workspace
-            workspaceInBytes,
-            devInfo // error info
-        ));
-    }
-    else
-    {
-        CUSOLVER_CHECK(cusolverDnDsyevd(
-            cusolverH,
-            CUSOLVER_EIG_MODE_VECTOR, // compute eigenvectors.
-            CUBLAS_FILL_MODE_LOWER,
-            m,      // size of the matrix
-            d_A,    // matrix
-            m,      // leading dimension of A
-            d_W,    // eigenvalues
-            (double*)d_work,    // workspace
-            workspaceInBytes,
-            devInfo // error info
-        ));
-    }
+
+    CUSOLVER_CHECK(cusolverDnDsyevdx(
+        cusolverH,
+        CUSOLVER_EIG_MODE_VECTOR, // compute eigenvectors.
+        CUSOLVER_EIG_RANGE_I,     // compute eigenvalues in an interval
+        CUBLAS_FILL_MODE_LOWER,
+        m,      // size of the matrix
+        d_A,    // matrix
+        m,      // leading dimension of A
+        0.0,    // vl - not used
+        0.0,    // vu - not used
+        m-k+1,    // il - lower bound of interval (index)
+        m,      // iu - upper bound of interval (index)
+        &h_meig,// number of eigenvalues found in the interval
+        d_W,    // eigenvalues
+        (double*)d_work,    // workspace
+        workspaceInBytes,
+        devInfo // error info
+    ));
+    
 
     // Initialize the eigenvalues and eigenvectors
-
     if (d_eigvals != nullptr)
         CUDA_CHECK(cudaMemcpy(d_eigvals, d_W, sizeof(double) * k, cudaMemcpyDeviceToDevice));
     if (d_eigvecs != nullptr)
