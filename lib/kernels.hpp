@@ -13,7 +13,7 @@
 
 extern void test_calculate_affinity_matrix(arma::mat& A_11, arma::mat& Z, double mu);
 
-extern void calculate_affinity_matrix(double* d_A_11, double* d_Z, int m, int n);
+extern void calculate_affinity_matrix_cuda(double* d_A_11, double* d_Z, int m, int n);
 
 void test_calculate_m_star( cublasHandle_t& handle, 
                             arma::mat& A_11,

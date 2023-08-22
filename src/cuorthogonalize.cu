@@ -82,7 +82,7 @@ void orthogonalize_cuda(
     CUDA_CHECK(cudaFree(d_n_n_tmp2));
 
 
-    eig_dsymx_cusolver(cusolverH, d_B, d_Lam_tilde, n, n, nullptr, d_V_tilde);
+    eig_dsymx_cusolver(cusolverH, d_B, d_Lam_tilde, n, n);
     // *** d_B is destroyed during the function and filled with its eigenvectors after function call ***
     d_V_tilde = d_B;
 

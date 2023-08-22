@@ -31,7 +31,6 @@ if __name__ == '__main__':
     print('=> Preprocessing data...')
     print('. processing usps')
     data_to_csv('usps', 256)
-    # TODO: Can try it out later
     print('. processing mnist')
     data_to_csv('mnist', 784)
     print('=> Preprocessing completed.')

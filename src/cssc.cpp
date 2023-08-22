@@ -4,6 +4,7 @@
 #include "../lib/cuda_helper.h"
 #include <iostream>
 #include <cstdio>
+#include <vector>
 
 
 using namespace std;
@@ -16,14 +17,11 @@ void CSSC::fit()
     timer.tic();
     int x_n = X.n_rows;
     // Sample m points from X (Armadillo)
-    arma::uvec inds = sample_without_replacement(0, X.n_rows - 1, m);
-    inds.load("mnist_inds.csv", arma::csv_ascii);
-    inds = inds.rows(0, m-1);
+    std::vector<int> res = sample_without_replacement(0, X.n_rows - 1, m);
+    arma::uvec inds = arma::conv_to<arma::uvec>::from(res);
 
     // Calculate Gaussian kernel
     arma::mat Z = X.rows(inds);
-    Z.save("Z.csv", arma::csv_ascii);
-    // Z.load("mnist_Z.csv", arma::csv_ascii);
     double mu = 0.0;
     for (unsigned int i = 0; i < m; i++) {
         for (unsigned int j = 0; j < m; j++) {
@@ -43,13 +41,13 @@ void CSSC::fit()
             A_11(j, i) = val;
         }
     }
-    A_11.save("A_11_cpu.csv", arma::csv_ascii);
+    // A_11.save("A_11_cpu.csv", arma::csv_ascii);
 
     arma::vec ww = A_11 * arma::ones<arma::vec>(m);
     arma::mat D_star = arma::diagmat(ww); // Don't see why it's needed
     arma::mat D_star_ = arma::diagmat(arma::pow(arma::sqrt(ww), -1));
     arma::mat M_star = D_star_ * A_11 * D_star_;
-    M_star.save("M_star_cpu.csv", arma::csv_ascii);
+    // M_star.save("M_star_cpu.csv", arma::csv_ascii);
 
     // Find the eigendecomposition of M_star
     arma::vec eigval;
@@ -75,19 +73,20 @@ void CSSC::fit()
     
     arma::mat Lam = arma::diagmat(eigval);
     arma::mat B = D_star_ * eigvec * arma::diagmat(arma::pow(eigval, -1));
-    B.save("B_cpu.csv", arma::csv_ascii);
+    // B.save("B_cpu.csv", arma::csv_ascii);
     arma::mat Q(x_n, k);
     for (unsigned int i = 0; i < x_n; i++) {
         arma::rowvec a(m);
+        arma::rowvec x = X.row(i);
         for (unsigned int j = 0; j < m; j++)
         {
-            a.col(j) = arma::norm(X.row(i) - Z.row(j));
+            a.col(j) = arma::norm(x - Z.row(j));
         }
         Q.row(i) = a * B;
     }
     
     // Save Q
-    Q.save("Q_cpu.csv", arma::csv_ascii);
+    // Q.save("Q_cpu.csv", arma::csv_ascii);
     
     arma::vec dd = Q * Lam * Q.t() * arma::ones<arma::vec>(x_n);
     dd = arma::pow(arma::sqrt(dd), -1);
@@ -107,8 +106,7 @@ void CSSC::fit()
     arma::eig_sym(Lam_tilde, V_tilde, B);
     
     U = U * Vp * arma::diagmat(arma::pow(arma::sqrt(Sig), -1)) * V_tilde;
-    U.save("U.csv", arma::csv_ascii);
-    // U.load("mnist_U2.csv", arma::csv_ascii);
+    // U.save("U.csv", arma::csv_ascii);
 
     // Cluster the approximated eigenvectors, U
     arma::mat centroids;
@@ -133,6 +131,36 @@ void CSSC::fit()
     this->y_hat = y_hat;
 }
 
+void CSSC::sample_matrix_X(arma::mat& Z, double *d_Z, int n)
+{
+    std::vector<int> res = sample_without_replacement(0, X.n_rows - 1, m);
+    arma::uvec inds = arma::conv_to<arma::uvec>::from(res);
+    Z = X.rows(inds);
+    CUDA_CHECK(cudaMemcpy(d_Z, Z.memptr(), m * n * sizeof(double), cudaMemcpyHostToDevice));
+}
+
+void CSSC::calculate_affinity_matrix_A(double* d_A_11, double* d_Z, int m, int n)
+{
+    calculate_affinity_matrix_cuda(d_A_11, d_Z, m, n);
+}
+
+void CSSC::calculate_affinity_Q(arma::mat& Z, arma::mat& B, int n, double* d_Q)
+{
+    arma::mat Q(x_n, k);
+    #pragma omp parallel for
+    for (unsigned int i = 0; i < x_n; i++) {
+        arma::rowvec a(m);
+        arma::rowvec x = X.row(i);
+        for (unsigned int j = 0; j < m; j++)
+        {
+            a.col(j) = arma::norm(x - Z.row(j));
+        }
+        Q.row(i) = a * B;
+    }
+    // Copy Q to GPU
+    CUDA_CHECK(cudaMemcpy(d_Q, Q.memptr(), x_n * k * sizeof(double), cudaMemcpyHostToDevice));
+}
+
 void CSSC::gpu_fit(cublasHandle_t cublaH, cusolverDnHandle_t cusolveH)
 {
     cublasHandle_t cublasH;
@@ -140,41 +168,23 @@ void CSSC::gpu_fit(cublasHandle_t cublaH, cusolverDnHandle_t cusolveH)
     // Initialize cusolver
     cusolverDnHandle_t cusolverH;
     cusolverDnCreate(&cusolverH);
-
-    
     // Cublas constants (used in cublas calsl)
     const double alpha = 1.0;
     const double beta = 0.0;
 
     Timer tim;
     startTime(&tim);
-    // Sample m matrix rows from X
-    int x_n = X.n_rows;
-    arma::uvec inds = sample_without_replacement(0, X.n_rows - 1, m);
-    
 
-    // arma::vec indsf;
-    // indsf.load("mnist_inds.csv", arma::csv_ascii);
-    // arma::uvec inds = arma::conv_to<arma::uvec>::from(indsf);
-    // inds.save("pro_inds.csv", arma::csv_ascii);
-    // printf("inds: %d, %d\n", inds.n_rows, inds.n_cols);
-    // printf("X: %d, %d\n", X.n_rows, X.n_cols);
-    // inds = inds.rows(0, m-1);
-
-    arma::mat Z = X.rows(inds);
     // Calculate affinity matrix
-    int n = Z.n_cols; // Now n is the number of columns of Z
     double* d_A_11;
     double* d_Z;
     CUDA_CHECK(cudaMalloc((void**)&d_A_11, m * m * sizeof(double)));
     CUDA_CHECK(cudaMalloc((void**)&d_Z, m * n * sizeof(double)));
-    CUDA_CHECK(cudaMemcpy(d_Z, Z.memptr(), m * n * sizeof(double), cudaMemcpyHostToDevice));
-    calculate_affinity_matrix(d_A_11, d_Z, m, n);
-
-    // Check if A_11 is correct
-    arma::mat A_11(m, m);
-    CUDA_CHECK(cudaMemcpy(A_11.memptr(), d_A_11, m * m * sizeof(double), cudaMemcpyDeviceToHost));
-    // A_11.save("A_11.csv", arma::csv_ascii);
+    // Sample m matrix rows from X and copy to d_Z
+    arma::mat Z(m, n);
+    sample_matrix_X(Z, d_Z, n);
+    calculate_affinity_matrix_A(d_A_11, d_Z, m, n);
+    // calculate_affinity_matrix_cuda(d_A_11, d_Z, m, n);
 
     // Calculate M_star TODO: Make this function
     double* d_M_star;
@@ -203,11 +213,6 @@ void CSSC::gpu_fit(cublasHandle_t cublaH, cusolverDnHandle_t cusolveH)
     CUDA_CHECK(cudaFree(d_ones));
     CUDA_CHECK(cudaFree(d_DA));
 
-    // Check if M_star is correct
-    arma::mat M_star(m, m);
-    CUDA_CHECK(cudaMemcpy(M_star.memptr(), d_M_star, m * m * sizeof(double), cudaMemcpyDeviceToHost));
-    // M_star.save("M_star.csv", arma::csv_ascii);
-
     // Find the eigendecomp of M_star
     double* d_eigvals;
     double* d_eigvecs;
@@ -216,8 +221,8 @@ void CSSC::gpu_fit(cublasHandle_t cublaH, cusolverDnHandle_t cusolveH)
     CUDA_CHECK(cudaMalloc((void**)&d_eigvecs, m * k * sizeof(double)));
     CUDA_CHECK(cudaMalloc(&d_W, sizeof(double) * m));
     eig_dsymx_cusolver(cusolverH, d_M_star, d_W, m, k, d_eigvals, d_eigvecs);
-    // d_M_star has been overwritten by eigenvectors, so we can deallocoate it
-    // as well as d_W
+    // d_M_star has been overwritten by eigenvectors, so we 
+    // can deallocoate it as well as d_W
     CUDA_CHECK(cudaFree(d_M_star));
     CUDA_CHECK(cudaFree(d_W));
 
@@ -250,43 +255,27 @@ void CSSC::gpu_fit(cublasHandle_t cublaH, cusolverDnHandle_t cusolveH)
     // Copy B to host arma::mat
     arma::mat B(m, k);
     CUDA_CHECK(cudaMemcpy(B.memptr(), d_B, m * k * sizeof(double), cudaMemcpyDeviceToHost));
-    // Save B to file
-    // B.save("B.csv", arma::csv_ascii);
-
     CUDA_CHECK(cudaFree(d_Z));
     CUDA_CHECK(cudaFree(d_B));
 
     // Calcualte Q on cpu 
-    // TODO: Later can send this to gpu if needed, but there are problems with memory consumption
     arma::mat Q(x_n, k);
-    #pragma omp parallel for
-    for (unsigned int i=0; i < x_n; i++) {
-        arma::rowvec a(m);
-        for (unsigned int j=0; j<m; j++)
-        {
-            a.col(j) = arma::norm(X.row(i) - Z.row(j));
-        }
-        Q.row(i) = a * B;
-    }
-    // Save Q to file
-    // Q.save("Q.txt", arma::raw_ascii);
-
     double* d_Q;
+    CUDA_CHECK(cudaMalloc((void**)&d_Q, x_n * k * sizeof(double)));
+    calculate_affinity_Q(Z, B, n, d_Q);
+
     double* d_ones_xn;
     double* d_dd;
     double* d_D_hat;
     double* d_QLam;
     double* d_Qt_ones;
     double* d_U;
-    CUDA_CHECK(cudaMalloc((void**)&d_Q, x_n * k * sizeof(double)));
+    // CUDA_CHECK(cudaMalloc((void**)&d_Q, x_n * k * sizeof(double)));
     CUDA_CHECK(cudaMalloc((void**)&d_ones_xn, x_n * sizeof(double)));
     CUDA_CHECK(cudaMalloc((void**)&d_dd, x_n * sizeof(double)));
     // CUDA_CHECK(cudaMalloc((void**)&d_D_hat, x_n * x_n * sizeof(double)));
     CUDA_CHECK(cudaMalloc((void**)&d_QLam, x_n * k * sizeof(double)));
     CUDA_CHECK(cudaMalloc((void**)&d_Qt_ones, k * sizeof(double)));
-
-    // Copy Q to GPU
-    CUDA_CHECK(cudaMemcpy(d_Q, Q.memptr(), x_n * k * sizeof(double), cudaMemcpyHostToDevice));
 
     // Initialize d_ones_nx
     ones_cuda(d_ones_xn, x_n);
@@ -308,8 +297,8 @@ void CSSC::gpu_fit(cublasHandle_t cublaH, cusolverDnHandle_t cusolveH)
 
     CUBLAS_CHECK(cublasDgemm(cublasH, CUBLAS_OP_N, CUBLAS_OP_N, x_n, k, x_n, &alpha, d_D_hat, x_n, d_Q, x_n, &beta, d_U, x_n));
     // Check if U is correct
-    arma::mat U(x_n, k);
-    CUDA_CHECK(cudaMemcpy(U.memptr(), d_U, x_n * k * sizeof(double), cudaMemcpyDeviceToHost));
+    // arma::mat U(x_n, k);
+    // CUDA_CHECK(cudaMemcpy(U.memptr(), d_U, x_n * k * sizeof(double), cudaMemcpyDeviceToHost));
     // U.save("U.txt", arma::raw_ascii);
     
     // Free unneded memory: d_Q, d_ones_xn(moved above), d_dd, d_D_hat, d_QLam, d_Qt_ones
@@ -327,18 +316,15 @@ void CSSC::gpu_fit(cublasHandle_t cublaH, cusolverDnHandle_t cusolveH)
     // Copy to arma::mat d_UU
     arma::mat UU(x_n, k);
     CUDA_CHECK(cudaMemcpy(UU.memptr(), d_UU, x_n * k * sizeof(double), cudaMemcpyDeviceToHost));
-    // UU.save("UU.csv", arma::csv_ascii);
-    // UU.load("mnist_U2.csv", arma::csv_ascii);
     // Cluster the approximated eigenvectors, Ud
     arma::mat centroids;
     arma::uvec y_hat(x_n);  
-    bool status = arma::kmeans(centroids, UU.t(), k, arma::random_subset, 10, false);
+    bool status = arma::kmeans(centroids, UU.t(), k, arma::random_subset, 30, false);
     if (!status) {
         std::cout << "Clustering failed!" << std::endl;
         this->y_hat = y_hat;
     }
     centroids = centroids.t();
-    centroids.save("centroids.csv", arma::csv_ascii);
     arma::vec d(k);
     for (unsigned int i = 0; i < x_n; i++) {
         for (unsigned int j = 0; j < k; j++) {
@@ -348,7 +334,6 @@ void CSSC::gpu_fit(cublasHandle_t cublaH, cusolverDnHandle_t cusolveH)
     }
 
     this->y_hat = y_hat;
-    // UU.save("UU_usps_best.csv", arma::csv_ascii);
 
     CUDA_CHECK(cudaFree(d_Lam));
     CUDA_CHECK(cudaFree(d_U));
@@ -429,7 +414,6 @@ void CSSC::test()
 
     A_11_cu.save("A_11_cu.csv", arma::csv_ascii);
     M_star_cu.save("M_star_cu.csv", arma::csv_ascii);
-    
 
     // Test if A_11 and A_11_cu are equal
     for (unsigned int i = 0; i < m; i++) {

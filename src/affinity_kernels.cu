@@ -157,7 +157,7 @@ void test_calculate_affinity_matrix(arma::mat& A_11, arma::mat& Z, double mu)
     printElapsedTime(timer, "Data transfer to host and memory deallocation");
 }
 
-void calculate_affinity_matrix(double* d_A_11, double* d_Z, int m, int n)
+void calculate_affinity_matrix_cuda(double* d_A_11, double* d_Z, int m, int n)
 {
     int m_blocks = (m + BLOCK_DIM_32 - 1) / BLOCK_DIM_32;
     double* d_mu;
