@@ -37,7 +37,7 @@ DEPS = $(OBJECTS:.o=.d)
 # flags #
 COMPILE_FLAGS = -O3 -std=c++17 -arch=sm_70 -lineinfo -Xcompiler -fopenmp
 
-INCLUDES = -I/usr/include -I/usr/local/cuda/include -I$(HOME)/diplomski/lib -I $(HOME)/diplomski/lib/armadillo/include
+INCLUDES = -I/usr/include -I/usr/local/cuda/include -I$(HOME)/diplomski/lib -I $(HOME)/diplomski/lib/armadillo/include -I $(HOME)/diplomski/lib/lambda-lanczos/include
 
 LIBS = -L/usr/local/lib -L/usr/local/cuda/lib64 -L$(HOME)/diplomski/lib -L $(HOME)/diplomski/lib/armadillo -llapack -lblas -lcublas -lcudart -lculibos -lcusolver -lgomp
  
@@ -75,7 +75,7 @@ all: $(BIN_PATH)/$(BIN_NAME)
 # Creation of the executable
 $(BIN_PATH)/$(BIN_NAME): $(OBJECTS)
 	@echo "Linking: $@"
-	$(NVCC) $(OBJECTS) -o $@ ${LIBS}
+	$(NVCC) $(OBJECTS) -MMD -MP -o $@ ${LIBS}
 	
 
 # Add dependency files, if they exist
@@ -86,8 +86,8 @@ $(BIN_PATH)/$(BIN_NAME): $(OBJECTS)
 # dependency files to provide header dependencies
 $(BUILD_PATH)/%.o: $(SRC_PATH)/%.$(SRC_EXT)
 	@echo "Compiling: $< -> $@"
-	$(NVCC) $(NVCCFLAGS) $(INC) -c $< -o $@
+	$(NVCC) $(NVCCFLAGS) -MMD -MP $(INC) -c $< -o $@
 
 $(BUILD_PATH)/%.o: $(SRC_PATH)/%.$(CU_EXT)
 	@echo "Compiling: $< -> $@"
-	$(NVCC) $(NVCCFLAGS) $(INC) -c $< -o $@
+	$(NVCC) $(NVCCFLAGS) -MMD -MP $(INC) -c $< -o $@

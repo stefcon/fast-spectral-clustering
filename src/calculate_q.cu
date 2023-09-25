@@ -92,5 +92,3 @@ void calculate_q_memory(cudaStream_t* streams,
         CUDA_CHECK(cudaFreeAsync(d_x, stream));
     }
 }
-
-void calculate_q_file();

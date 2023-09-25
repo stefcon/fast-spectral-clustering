@@ -4,4 +4,4 @@
 # do
     export OMP_NUM_THREADS=8
     ./program
-# done
+# doneW

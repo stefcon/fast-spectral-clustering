@@ -26,11 +26,37 @@ def data_to_csv(filename, dim):
     in_fp.close()
     out_fp.close()
 
+def npy_csr_to_csv(filename):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import scipy.io as sio
+    from scipy.sparse import csr_matrix
+    import pandas as p
+    filepath = 'data/raw/' + filename
+    out_filepath = 'data/processed/' + filename + '.csv'
+
+    npz = np.load(filepath)
+    sparse_matrix = csr_matrix((npz['data'], npz['indices'], npz['indptr']), shape=npz['shape'])
+    dense_matrix = sparse_matrix.todense()
+    np.savetxt(out_filepath, dense_matrix, delimiter=',')
+
+
 
 if __name__ == '__main__':
-    print('=> Preprocessing data...')
-    print('. processing usps')
-    data_to_csv('usps', 256)
-    print('. processing mnist')
-    data_to_csv('mnist', 784)
+    # print('=> Preprocessing data...')
+    # print('. processing usps')
+    # data_to_csv('usps', 256)
+    # print('. processing mnist')
+    # data_to_csv('mnist', 784)
+    # print('=> Preprocessing completed.')
+
+    # Takes long time to process, uncomment if really needed!
+    # print('. processing mnist8m')
+    # data_to_csv('mnist8m', 784)
+    # print('=> Preprocessing completed.')
+    print('. processing Data_C5')
+    npy_csr_to_csv('Data_C5.npz')
+    print('=> Preprocessing completed.')
+    print('. processing Data_C6')
+    npy_csr_to_csv('Data_C6.npz')
     print('=> Preprocessing completed.')

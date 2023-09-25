@@ -1,9 +1,9 @@
 #include "../lib/clustering.hpp"
 #include <vector>
 #include <cmath>
+#include <iostream>
 
 
-// Path: bs190253d/diplomski/src/clustering.cpp
 double Clustering::accuracy(const arma::uvec& Y, const arma::uvec &y_hat)
 {
         arma::uvec uniques = arma::unique(Y);
@@ -15,7 +15,7 @@ double Clustering::accuracy(const arma::uvec& Y, const arma::uvec &y_hat)
         do {
             arma::uvec yy(y_hat);
             for (unsigned int i=0; i<k; i++) {
-                arma::uvec inds = arma::find(y_hat == i);
+                arma::uvec inds = arma::find(y_hat == uniques(i));
                 arma::uvec f(inds.n_rows);
                 f.fill(perm[i]);
                 yy.rows(inds) = f;

@@ -132,19 +132,69 @@ void gemv_diag(double* d_M, double* d_v, int m, int n, vectorDiagMul_t type)
         gemv_diag_right<<<grid, block>>>(d_M, d_v, m, n);
     }
 }
+
+__global__ void parallel_subtract_mul_kernel(double* d_Z, double* d_a, double* d_x, double* d_result, int m, int n)
+{
+    // Subtract from every column of d_Z the vector d_x
+    // Args:
+    //      d_Z: matrix of size m x n
+    //      d_a: vector of size m
+    //      d_x: vector of size n
+    //      m: number of rows of d_Z
+    //      n: number of columns of d_Z
+    int tid = threadIdx.x;
+    int ty = tid / BLOCK_DIM_32;
+    int tx = tid % BLOCK_DIM_32;
+    // Rows that we are going to multiply
+    int i = blockIdx.y * BLOCK_DIM_32 + ty;
+    int j = blockIdx.x * BLOCK_DIM_32 + tx;
+    double elem = 0.0;
+    if (i < m && j < n)
+    {
+        elem = (d_x[j] - d_Z[j * m + i]) * (d_x[j] - d_Z[j * m + i]);
+        d_result[j * m + i]= elem;
+    }
+}
+
+void calculate_affinity_row_cuda(cublasHandle_t cublasH, double* d_Z, double* d_a, double* d_x, double* d_result, int m, int n)
+{
+    // Calculate affinity row for every point in Z
+
+    // double *d_x, *d_ones, *d_result;
+    double alpha = 1.0;
+    double beta = 0.0;
+    // CUDA_CHECK(cudaMalloc((void**)&d_x, n * sizeof(double)));
+    // CUDA_CHECK(cudaMalloc((void**)&d_ones, n * sizeof(double)));
+    // CUDA_CHECK(cudaMalloc((void**)&d_result, m * n * sizeof(double)));
+    // CUDA_CHECK(cudaMemcpy(d_x, x.memptr(), n * sizeof(double), cudaMemcpyHostToDevice));
+
+
+    dim3 grid((n + BLOCK_DIM_32 - 1)/BLOCK_DIM_32, (m + BLOCK_DIM_32 - 1)/BLOCK_DIM_32);
+    dim3 block(NUM_THREADS_32);
+    parallel_subtract_mul_kernel<<<grid, block>>>(d_Z, d_a, d_x, d_result, m, n);
+
+    // Change d_x to vector of ones (not needed anymore!)
+    ones_cuda(d_x, n);
+    CUBLAS_CHECK(cublasDgemv(cublasH, CUBLAS_OP_N, m, n, &alpha, d_result, m, d_x, 1, &beta, d_a, 1));
+    sqrt_vec(d_a, m);
+
+    // CUDA_CHECK(cudaFree(d_x));
+    // CUDA_CHECK(cudaFree(d_result));
+}
+
 void test_calculate_m_star(cublasHandle_t& handle, arma::mat& A_11, arma::mat& M_star)
 {
     // Transfering this code to cuda:
+    // ------------------------------
     // arma::vec ww = A_11 * arma::ones<arma::vec>(m);
     // arma::mat D_star_ = arma::diagmat(arma::pow(arma::sqrt(ww), -1));
     // arma::mat M_star = D_star_ * A_11 * D_star_;
-
+    // ------------------------------
     cublasStatus_t stat;
-    // cublasHandle_t handle;
-    int m = A_11.n_rows;
     Timer timer;
-    // cublasCreate(&handle);
-
+    
+    int m = A_11.n_rows;
+    
     double* d_A_11;
     double* d_ww;
     double* d_ones_m;

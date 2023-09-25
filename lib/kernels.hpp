@@ -85,5 +85,13 @@ void gemv_diag(double* d_M,
                vectorDiagMul_t type
                );
 
+void calculate_affinity_row_cuda(cublasHandle_t cublasH, 
+                                 double* d_Z,
+                                 double* d_a,
+                                 double* d_x,
+                                 double* d_result,
+                                 int m,
+                                 int n
+                                 );
 
 #endif

@@ -35,5 +35,11 @@ static void printElapsedTime(Timer timer, const char* s, enum PrintColor color =
     printf("\n");
 }
 
+static float getElapsedTime(Timer timer) {
+    float t = ((float) ((timer.endTime.tv_sec - timer.startTime.tv_sec) \
+                + (timer.endTime.tv_usec - timer.startTime.tv_usec)/1.0e6));
+    return t;
+}
+
 #endif
 

@@ -27,3 +27,7 @@ if [ ! -d "lib/QCustomPlot" ]; then
   tar -vxzf lib/QCustomPlot.tar.gz -C lib/QCustomPlot --strip-components=1
   rm -f lib/QCustomPlot.tar.gz
 fi
+
+if [ ! -d "lib/lambda-lanczos" ]; then
+  git clone https://github.com/mrcdr/lambda-lanczos.git /lib
+fi

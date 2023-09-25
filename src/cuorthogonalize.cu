@@ -34,7 +34,8 @@ void orthogonalize_cuda(
     // arma::eig_sym(Lam_tilde, V_tilde, B);
     // U = U * Vp * arma::diagmat(arma::pow(arma::sqrt(Sig), -1)) * V_tilde;
     // ---------------------------------------------------------------
-    
+    Timer tim_ort;
+    startTime(&tim_ort);
     double* d_P;
     double* d_Sig;
     double* d_Vp;
@@ -106,4 +107,6 @@ void orthogonalize_cuda(
     CUDA_CHECK(cudaFree(d_V_tilde));
     CUDA_CHECK(cudaFree(d_m_n_tmp1));
     CUDA_CHECK(cudaFree(d_m_n_tmp2));
+    stopTime(&tim_ort);
+    printElapsedTime(tim_ort, "GPU orthogonalization", CYAN);
 }

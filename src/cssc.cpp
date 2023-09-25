@@ -34,7 +34,7 @@ void CSSC::fit()
 
     // Calculate the affinity matrix
     arma::mat A_11(m, m);
-    for (unsigned int i= 0; i < m; i++) {
+    for (unsigned int i = 0; i < m; i++) {
         for (unsigned int j=i; j < m; j++) {
             double val = exp(-mu * pow(arma::norm(Z.row(i) - Z.row(j)), 2));
             A_11(i, j) = val;
@@ -63,10 +63,9 @@ void CSSC::fit()
     arma::mat Q(x_n, k);
     for (unsigned int i = 0; i < x_n; i++) {
         arma::rowvec a(m);
-        arma::rowvec x = X.row(i);
         for (unsigned int j = 0; j < m; j++)
         {
-            a.col(j) = arma::norm(x - Z.row(j));
+            a.col(j) = arma::norm(X.row(i) - Z.row(j));
         }
         Q.row(i) = a * B;
     }
@@ -80,6 +79,8 @@ void CSSC::fit()
     arma::mat U = D_hat_ * Q; // x_n x k
 
     // Orthogonalize U
+    Timer tim_ort;
+    startTime(&tim_ort);
     arma::mat P = U.t() * U; // k x k
     arma::vec Sig;
     arma::mat Vp;
@@ -92,6 +93,8 @@ void CSSC::fit()
     arma::eig_sym(Lam_tilde, V_tilde, B);
     
     U = U * Vp * arma::diagmat(arma::pow(arma::sqrt(Sig), -1)) * V_tilde;
+    stopTime(&tim_ort);
+    printElapsedTime(tim_ort, "CPU orthogonalization", CYAN);
 
     // Cluster the approximated eigenvectors, U
     arma::mat centroids;
@@ -116,6 +119,8 @@ void CSSC::fit()
     this->y_hat = y_hat;
 }
 
+// Protected methods
+//// -----------------------------------------------------------------------------------------------
 void CSSC::sample_matrix_X(arma::mat& Z, double *d_Z, int n)
 {
     std::vector<int> res = sample_without_replacement(0, X.n_rows - 1, m);
@@ -129,24 +134,37 @@ void CSSC::calculate_affinity_matrix_A(double* d_A_11, double* d_Z, int m, int n
     calculate_affinity_matrix_cuda(d_A_11, d_Z, m, n);
 }
 
-void CSSC::calculate_affinity_Q(arma::mat& Z, arma::mat& B, int n, double* d_Q)
+
+void CSSC::calculate_affinity_Q(arma::mat& Z, arma::mat& B, int n, double* d_Q, double* d_B, cublasHandle_t cublasH)
 {
     arma::mat Q(x_n, k);
+    Z = Z.t();
+    Q = Q.t();
+    B = B.t();
+    X = X.t();
     #pragma omp parallel for
     for (unsigned int i = 0; i < x_n; i++) {
-        arma::rowvec a(m);
-        arma::rowvec x = X.row(i);
+        // arma::rowvec a(m);
+        // arma::rowvec x = X.row(i);
+        arma::vec a(m);
+        arma::vec x = X.col(i);
         for (unsigned int j = 0; j < m; j++)
         {
-            a.col(j) = arma::norm(x - Z.row(j));
+            // a.col(j) = arma::norm(x - Z.row(j));
+            a(j) = arma::norm(x - Z.col(j));
         }
-        Q.row(i) = a * B;
+        // Q.row(i) = a * B;
+        Q.col(i) = B * a;
     }
+    Z = Z.t();
+    Q = Q.t();
+    B = B.t();
+    X = X.t();
     // Copy Q to GPU
     CUDA_CHECK(cudaMemcpy(d_Q, Q.memptr(), x_n * k * sizeof(double), cudaMemcpyHostToDevice));
 }
-
-void CSSC::gpu_fit(cublasHandle_t cublaH, cusolverDnHandle_t cusolveH)
+//// -----------------------------------------------------------------------------------------------
+void CSSC::gpu_fit()
 {
     cublasHandle_t cublasH;
     cublasCreate(&cublasH);
@@ -228,13 +246,13 @@ void CSSC::gpu_fit(cublasHandle_t cublaH, cusolverDnHandle_t cusolveH)
     // Copy B to host arma::mat
     arma::mat B(m, k);
     CUDA_CHECK(cudaMemcpy(B.memptr(), d_B, m * k * sizeof(double), cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaFree(d_B));
 
     // Calcualte Q on cpu 
-    arma::mat Q(x_n, k);
     double* d_Q;
     CUDA_CHECK(cudaMalloc((void**)&d_Q, x_n * k * sizeof(double)));
-    calculate_affinity_Q(Z, B, n, d_Q);
+    calculate_affinity_Q(Z, B, n, d_Q, d_B, cublasH);
+    // Moved while testing for better performance!
+    CUDA_CHECK(cudaFree(d_B));
 
     double* d_ones_xn;
     double* d_dd;

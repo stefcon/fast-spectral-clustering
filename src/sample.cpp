@@ -1,6 +1,8 @@
 #include "../lib/sample.hpp"
 #include <random>
 #include <algorithm>
+#include <filesystem>
+#include <fstream>
 
 
 std::vector<int> sample_without_replacement(int low, int high, int n)
@@ -16,9 +18,21 @@ std::vector<int> sample_without_replacement(int low, int high, int n)
     // equal probability of appearance, and writes those selected elements into the output iterator out. Random numbers 
     // are generated using the random number generator g.
     std::sample(v.begin(), v.end(), std::back_inserter(inds), n, gen);
-    // Random reorder such that each possible permutati0on of those elements has qeual probability of appearance.
-    // std::shuffle(inds.begin(), inds.end(), gen);
 
+    std::sort(inds.begin(), inds.end());
 
     return inds;
+}
+
+
+void read_labels(std::string& file_name, arma::uvec& uY)
+{
+    std::vector<int> labels;
+    std::ifstream file(file_name);
+    std::string line;
+    while (std::getline(file, line)) {
+        int label = line[line.length() - 1] - '0';
+        labels.push_back(label);
+    }
+    uY = arma::conv_to<arma::uvec>::from(labels);
 }

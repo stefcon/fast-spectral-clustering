@@ -26,6 +26,8 @@ lib/armadillo
 lib/Eigen
 lib/QCustomPlot
 lib/spectra-0.4.0
+lib/lambda-lanczos
+env
 
 # notebook checkpoints
 .ipynb_checkpoints
