@@ -39,10 +39,15 @@ def visualize_results():
                     graph_path = os.path.join(graphs_folder, file[:-4])
                     labels = np.genfromtxt(file_path, delimiter=',')
                     try:
-                        plt.scatter(positions[:, 0], positions[:, 1], c=labels)
+                        # Choose good color palette for distinguishing clusters
+                        plt.scatter(positions[:, 0], positions[:, 1], c=labels, cmap=plt.cm.get_cmap('viridis', int(np.max(labels)) + 1))
+                        # plt.scatter(positions[:, 0], positions[:, 1], c=labels)
+                        plt.xlabel('X')
+                        plt.ylabel('Y')
                         plt.savefig(graph_path)
                         plt.clf()
-                    except:
+                    except Exception as e:
+                        print(e)
                         print(file_path)
                         print(positions.shape)
                         print(labels.shape)

@@ -45,6 +45,10 @@ int find_optimal_k(arma::mat& X, int k, arma::vec& eigvals)
     // Free unneded memory: d_Z (still on CPU)
     CUDA_CHECK(cudaFree(d_X));
     std::cout << "Finished calculating affinity matrix" << std::endl;
+    // Save affinity matrix to file
+    arma::mat A(m, m);
+    CUDA_CHECK(cudaMemcpy(A.memptr(), d_A, m * m * sizeof(double), cudaMemcpyDeviceToHost));
+    A.save("A.csv", arma::csv_ascii);
 
     // Calculate M_star
     double* d_M_star;
@@ -112,13 +116,15 @@ int find_optimal_k(arma::mat& X, int k, arma::vec& eigvals)
     // CUDA_CHECK(cudaFree(d_eigvals));
     // CUDA_CHECK(cudaFree(d_eigvecs));
 
-    eigvals = eigvals / eigvals.max();
+    // eigvals = eigvals / eigvals.max();
     eigvals.save("eigvals.csv", arma::csv_ascii);
 
     // Calculate the differnce between consecutive eigenvalues
     // and find the index of the largest difference
     // Divide eigvals by the largest eigenvalue
     arma::vec eigval_diffs = arma::abs(arma::diff(eigvals));
+    // Remove the first element of eigval_diffs
+    eigval_diffs.shed_row(0);
     int max_eigval_diff_idx = arma::index_max(eigval_diffs);
 
     stopTime(&tim);
