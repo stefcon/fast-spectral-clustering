@@ -2,7 +2,7 @@
 Parallelized implementation of the algorithm proposed in the paper "Time and Space Efficient Spectral Clustering via Column Sampling" by Mu Li et al., 2011. done as my final bachelor thesis.
 
 # Dependencies
-Most of the dependencies that are required to run this code can be installed through running the scripts ```lib/lib.sh``` with sudo privileges.
+Most of the dependencies that are required to run this code can be installed through running the script ```lib/lib.sh``` with sudo privileges.
 
 In addtion, to run the parallelized implementation of the algorithm, host computer is required to have the CUDA and NVCC compiler installed ([Installation guide for Linux](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/contents.html)).
 
