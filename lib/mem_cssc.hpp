@@ -4,64 +4,60 @@
 #include "cssc.hpp"
 #include <string>
 
-class MemCSSC : public CSSC 
+class MemCSSC : public Clustering 
 {
 public:
-    MemCSSC(std::string filepath, int k, int m) : CSSC(k, m), filepath(filepath)
+    MemCSSC(std::string filepath, int x_n, int n, int k, int m) : filepath(filepath), x_n(x_n), n(n), k(k), m(m)
     {
-        read_data_dimensions(filepath);
         // Initialize inds_for_sampling to all indices
         inds_for_sampling = arma::linspace<arma::uvec>(0, x_n-1, x_n);
     }
 
-    MemCSSC(std::string& filepath, arma::uvec inds, int k, int m) : CSSC(k, m), filepath(filepath), inds_for_sampling(inds)
+    MemCSSC(std::string& filepath, arma::uvec inds, int n, int k, int m) : filepath(filepath), inds_for_sampling(inds), n(n), k(k), m(m)
     {
-        read_data_dimensions(filepath);
         x_n = inds.n_elem;
     }
+
+    void fit() override;
 
     ~MemCSSC() {};
 
 protected:
-    // Read number of rows and columns in data matrix
-    virtual void read_data_dimensions(std::string& filepath);
     // Sample matrix X from 
     virtual void sample_matrix_X(arma::mat& Z, double *d_Z, int n);
+    // Affinity matrix A_11 (expecting column-major matrices)
+    // A_11 - output, Z - input, m - number of rows, n - number of columns
+    virtual void calculate_affinity_matrix_A(double* d_A_11, double* d_Z, int m, int n);
     // Affinity matrix using between points x_i and points in Z matrix
     virtual void calculate_affinity_Q(arma::mat& Z, arma::mat& B, int n, double* d_Q, double* d_B, cublasHandle_t cublasH);
 
+
     std::string filepath;
     arma::uvec inds_for_sampling;
+    int k, m, x_n, n;
 };
 
-class SparseMemCSSC : public CSSC
+class SparseMemCSSC : public MemCSSC
 {
 public:
-    SparseMemCSSC(std::string filepath, int k, int m) : CSSC(k, m), filepath(filepath)
+    SparseMemCSSC(std::string filepath, int x_n, int n, int k, int m) : MemCSSC(filepath, x_n, n, k, m)
     {
-        read_data_dimensions(filepath);
         // Initialize inds_for_sampling to all indices
         inds_for_sampling = arma::linspace<arma::uvec>(0, x_n-1, x_n);
     }
 
-    SparseMemCSSC(std::string& filepath, arma::uvec inds, int k, int m) : CSSC(k, m), filepath(filepath), inds_for_sampling(inds)
+    SparseMemCSSC(std::string& filepath, arma::uvec inds, int n, int k, int m) : MemCSSC(filepath, inds, n, k, m)
     {
-        read_data_dimensions(filepath);
         x_n = inds.n_elem;
     }
 
     ~SparseMemCSSC() {};
 
 protected:
-    // Read number of rows and columns in data matrix
-    virtual void read_data_dimensions(std::string& filepath);
     // Sample matrix X from 
     virtual void sample_matrix_X(arma::mat& Z, double *d_Z, int n);
     // Affinity matrix using between points x_i and points in Z matrix
     virtual void calculate_affinity_Q(arma::mat& Z, arma::mat& B, int n, double* d_Q, double* d_B, cublasHandle_t cublasH);
-
-    std::string filepath;
-    arma::uvec inds_for_sampling;
 };
 
 

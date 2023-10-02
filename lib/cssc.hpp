@@ -18,7 +18,7 @@ public:
     ~CSSC() {};
 
     void fit() override;
-    void gpu_fit() override;
+    void gpu_fit(); // TODO: Could be deleted, used while developing!
 
     void test();
 protected:

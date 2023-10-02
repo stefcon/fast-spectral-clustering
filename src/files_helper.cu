@@ -3,8 +3,25 @@
 #include <fstream>
 #include <iostream>
 
+void get_data_dimensions_csv(std::string& filepath, int& m, int&n)
+{
+    m = 0;
+    n = 0;
+    std::ifstream infile(filepath);
+    std::string line;
+    while (std::getline(infile, line))
+    {
+        m++;
+        if (n == 0)
+        {
+            n = std::count(line.begin(), line.end(), ','); // Last column represents the label
+        }
+    }
+    infile.close();
+}
 
-void get_data_dimensions(std::string& filepath, int& m, int& n) 
+
+void get_data_dimensions_coo(std::string& filepath, int& m, int& n) 
 {
     m = 0;
     n = 0;
@@ -23,11 +40,10 @@ void get_data_dimensions(std::string& filepath, int& m, int& n)
             if (curr_n + 1 > n) n = curr_n + 1;
         }
     }
-    std::cout << "m: " << m << std::endl;
-    std::cout << "n: " << n << std::endl;
+    std::cout << "Data dimensions: " << m << " x " << n << std::endl;
 }
 
-void read_matrix_X_sparse(std::string& filepath, arma::mat& X)
+void read_matrix_X_sparse_coo(std::string& filepath, arma::mat& X)
 {
     // Initialize X to zeros
     X.zeros();

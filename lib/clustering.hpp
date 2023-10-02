@@ -10,7 +10,6 @@ public:
     Clustering() {}
 
     virtual void fit() = 0;
-    virtual void gpu_fit() = 0;
 
     virtual arma::uvec get_y_hat() const { return y_hat;}
     double accuracy(const arma::uvec& Y, const arma::uvec &y_hat);

@@ -154,19 +154,6 @@ void test_eig_kernel(arma::mat mat, int  m)
         devInfo // error info
     );
 
-    // cusolver_status = cusolverDnDsyevd(
-    //         cusolverH,
-    //         CUSOLVER_EIG_MODE_VECTOR, // compute eigenvectors.
-    //         CUBLAS_FILL_MODE_LOWER,
-    //         m,      // size of the matrix
-    //         d_A,    // matrix
-    //         m,      // leading dimension of A
-    //         d_W,    // eigenvalues
-    //         (double*)d_work,    // workspace
-    //         workspaceInBytes,
-    //         devInfo // error info
-    //     );
-
     // Check dev info
     int devInfo_h = 0;
     cudaMemcpy(&devInfo_h, devInfo, sizeof(int), cudaMemcpyDeviceToHost);

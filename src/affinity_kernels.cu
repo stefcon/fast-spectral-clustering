@@ -1,5 +1,6 @@
 #include "../lib/kernels.hpp"
 #include "../lib/timer.h"
+#include "../lib/cuda_helper.h"
 #include <cstdio>
 
 #define BLOCK_DIM_32 32
@@ -121,14 +122,14 @@ void test_calculate_affinity_matrix(arma::mat& A_11, arma::mat& Z, double mu)
 
     startTime(&timer);
     // Allocate memory on device
-    cudaMalloc((void**)&d_A_11, m * m * sizeof(double));
-    cudaMalloc((void**)&d_Z, m * n * sizeof(double));
-    cudaMalloc((void**)&d_mu, m_blocks * m_blocks * sizeof(double));
+    CUDA_CHECK(cudaMalloc((void**)&d_A_11, m * m * sizeof(double)));
+    CUDA_CHECK(cudaMalloc((void**)&d_Z, m * n * sizeof(double)));
+    CUDA_CHECK(cudaMalloc((void**)&d_mu, m_blocks * m_blocks * sizeof(double)));
 
     // Copy data to device (affinity and Z matrix)
     // cudaMemcpy(d_A_11, A_11.memptr(), m * m * sizeof(double), cudaMemcpyHostToDevice);
-    cudaMemset(d_A_11, 0, m * m * sizeof(double));
-    cudaMemcpy(d_Z, Z.memptr(), m * n * sizeof(double), cudaMemcpyHostToDevice);
+    CUDA_CHECK(cudaMemset(d_A_11, 0, m * m * sizeof(double)));
+    CUDA_CHECK(cudaMemcpy(d_Z, Z.memptr(), m * n * sizeof(double), cudaMemcpyHostToDevice));
 
     cudaDeviceSynchronize();
     stopTime(&timer);
@@ -161,12 +162,12 @@ void calculate_affinity_matrix_cuda(double* d_A_11, double* d_Z, int m, int n)
 {
     int m_blocks = (m + BLOCK_DIM_32 - 1) / BLOCK_DIM_32;
     double* d_mu;
-    cudaMalloc((void**)&d_mu, m_blocks * m_blocks * sizeof(double));
-    cudaMemset(d_mu, 0,  m_blocks * m_blocks * sizeof(double));
+    CUDA_CHECK(cudaMalloc((void**)&d_mu, m_blocks * m_blocks * sizeof(double)));
+    CUDA_CHECK(cudaMemset(d_mu, 0,  m_blocks * m_blocks * sizeof(double)));
 
     dim3 grid(m_blocks, m_blocks);
     dim3 block(NUM_THREADS);
     calculate_mu_kernel_reduction<<<grid, block>>>(d_Z, m, n, d_mu);
     calculate_affinity_matrix_kernel<<<grid, block>>>(d_A_11, d_Z, d_mu, m, n);
-    cudaFree(d_mu);
+    CUDA_CHECK(cudaFree(d_mu));
 }

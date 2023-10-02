@@ -158,7 +158,16 @@ __global__ void parallel_subtract_mul_kernel(double* d_Z, double* d_a, double* d
 
 void calculate_affinity_row_cuda(cublasHandle_t cublasH, double* d_Z, double* d_a, double* d_x, double* d_result, int m, int n)
 {
-    // Calculate affinity row for every point in Z
+    /* 
+    Calculate affinity row for every point in Z 
+        Args:
+            d_Z: matrix of size m x n
+            d_a: vector of size m
+            d_x: vector of size n
+            d_result: vector of size m
+            m: number of rows of d_Z
+            n: number of columns of d_Z
+    */
 
     // double *d_x, *d_ones, *d_result;
     double alpha = 1.0;

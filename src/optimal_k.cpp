@@ -10,6 +10,7 @@
 using stdvec = std::vector<double>;
 using stdvecvec = std::vector<std::vector<double>>;
 
+
 static stdvecvec mat_to_std_vec(arma::mat &A) {
     stdvecvec V(A.n_rows);
     for (size_t i = 0; i < A.n_rows; ++i) {
@@ -106,7 +107,6 @@ int find_optimal_k(arma::mat& X, int k, arma::vec& eigvals)
     std::cout << "Finished calculating eigenvalues" << std::endl;
 
 
-    // Copy eigenvectors to host
     // Convert to arma::vec and arma::mat
     eigvals = arma::conv_to<arma::vec>::from(eigenvalues);
     // eigvecs = arma::conv_to<arma::mat>::from(eigenvectors);
@@ -116,10 +116,12 @@ int find_optimal_k(arma::mat& X, int k, arma::vec& eigvals)
     // CUDA_CHECK(cudaFree(d_eigvals));
     // CUDA_CHECK(cudaFree(d_eigvecs));
 
+    // -- Normalize eigvals (optional) --
     // eigvals = eigvals / eigvals.max();
+    // ----------------------------------
     eigvals.save("eigvals.csv", arma::csv_ascii);
 
-    // Calculate the differnce between consecutive eigenvalues
+    // Calculate the difference between consecutive eigenvalues
     // and find the index of the largest difference
     // Divide eigvals by the largest eigenvalue
     arma::vec eigval_diffs = arma::abs(arma::diff(eigvals));
@@ -130,7 +132,4 @@ int find_optimal_k(arma::mat& X, int k, arma::vec& eigvals)
     stopTime(&tim);
     printElapsedTime(tim, "find_optimal_k");
     return max_eigval_diff_idx + 1;
-
-
-
 }
