@@ -1,5 +1,5 @@
 # Fast Spectral Clustering
-Parallelized implementation of algorithm proposed in the paper "Time and Space Efficient Spectral Clustering via Column Sampling" by Mu Li et al., 2011.
+Parallelized implementation of the algorithm proposed in the paper "Time and Space Efficient Spectral Clustering via Column Sampling" by Mu Li et al., 2011. done as my final bachelor thesis.
 
 # Dependencies
 Most of the dependencies that are required to run this code can be installed through running the scripts ```lib/lib.sh``` with sudo privileges.
