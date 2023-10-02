@@ -31,3 +31,12 @@ fi
 if [ ! -d "lib/lambda-lanczos" ]; then
   git clone https://github.com/mrcdr/lambda-lanczos.git /lib
 fi
+ 
+# Required dependencies (need to be installed using sudo privileges)
+# Armadillo dependencies
+apt-get install liblapack-dev
+apt-get install libblas-dev
+apt-get install libboost-dev 
+
+# OpenMP installation
+apt-get install libomp-dev 
