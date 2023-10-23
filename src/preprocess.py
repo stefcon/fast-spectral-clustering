@@ -40,6 +40,32 @@ def npy_csr_to_csv(filename):
     dense_matrix = sparse_matrix.todense()
     np.savetxt(out_filepath, dense_matrix, delimiter=',')
 
+def npy_csr_to_coo_csv(filename):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import scipy.io as sio
+    from scipy.sparse import csr_matrix
+    import itertools
+    filepath = 'data/raw/' + filename
+    out_filepath = 'data/processed/' + filename + 'coo.csv'
+
+    npz = np.load(filepath)
+    sparse_matrix = csr_matrix((npz['data'], npz['indices'], npz['indptr']), shape=npz['shape'])
+    coo_matrix = sparse_matrix.tocoo()
+    print("Finished COO conversion")
+
+    row_map = {}
+    for i, j, v in zip(coo_matrix.row, coo_matrix.col, coo_matrix.data):
+        row_map[i] = row_map.get(i, []) + [(j, v)]
+
+    with open(out_filepath, 'w+') as fp:
+        for i in range(coo_matrix.shape[0]):
+            if i in row_map:
+                row = row_map[i]
+                row = [f"{entry[0]}:{entry[1]}" for entry in row]
+                fp.write(','.join(row) + '\n')
+            else:
+                fp.write('\n')
 
 
 if __name__ == '__main__':
