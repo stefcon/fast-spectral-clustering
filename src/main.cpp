@@ -184,20 +184,6 @@ void example1()
     cout << "Sequential" << endl;
     CSSC cssc_clustering(X, k, m);
     tester(cssc_clustering, uY, "cssc");
-    
-
-    // Read and run MemCSSC on  MNIST8M dataset
-    // file_name = "data/processed/mnist8m_subset.csv";
-    // // Read data/processed/mnist8m.csv line by line, taking last element as label and 
-    // // element of arma::uvec
-    // cout << "--------------------------" << endl;
-    // cout << "MNIST8M" << endl;
-    // cout << "--------------------------" << endl;
-    // read_labels(file_name, uY);
-    // // uY.save("mnist8m_Y.csv", arma::csv_ascii);
-
-    // MemCSSC mem_cssc_clustering2(file_name, k, m);
-    // tester(mem_cssc_clustering2, uY, "mem_cssc_mnist8m");
 }
 
 void example2()
@@ -251,12 +237,39 @@ void example3()
     cout << "Optimal k: " << result << endl;
 }
 
+void example4()
+{
+    cudaDeviceSynchronize();
+
+    int x_n, n;
+    arma::uvec uY;
+    unsigned int m = 1000;
+    unsigned int k = 5;
+    double accur;
+    arma::uvec y_hat;
+
+    // Read and run MemCSSC on  MNIST8M dataset
+    string file_name = "data/processed/mnist8m_subset.csv";
+    // Read data/processed/mnist8m.csv line by line, taking last element as 
+    // label and  element of arma::uvec
+    cout << "--------------------------" << endl;
+    cout << "MNIST8M" << endl;
+    cout << "--------------------------" << endl;
+    read_labels(file_name, uY);
+    uY.save("mnist8m_Y.csv", arma::csv_ascii);
+
+
+    MemCSSC mem_cssc_clustering2(file_name, MNIST8M_SUBSET_SIZE, MNIST8M_DIM, k, m);
+    tester(mem_cssc_clustering2, uY, "mem_cssc_mnist8m");
+}
+
 int main(int argc, char* argv[])
 {   
 
-    example1();
+    // example1();
     // example2();
     // example3();
+    example4();
 
     return 0;
 }
